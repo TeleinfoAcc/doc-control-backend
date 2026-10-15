@@ -1,13 +1,24 @@
 package middleware
 
 import (
+	"log"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("secret-key")
+// JwtSecret อ่านจาก JWT_SECRET ใน .env (ใช้ร่วมกับ handlers.Login ตอนสร้าง token)
+var JwtSecret = loadJwtSecret()
+
+func loadJwtSecret() []byte {
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		return []byte(secret)
+	}
+	log.Println("⚠️ ไม่ได้ตั้งค่า JWT_SECRET ใช้ค่า default (ห้ามใช้ใน production)")
+	return []byte("secret-key")
+}
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -22,10 +33,10 @@ func AuthMiddleware() gin.HandlerFunc {
 		// ตัด "Bearer " ออก
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// ตรวจ token
+		// ตรวจ token (รับเฉพาะ HS256 กันการปลอม token ด้วย algorithm อื่น)
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-			return jwtSecret, nil
-		})
+			return JwtSecret, nil
+		}, jwt.WithValidMethods([]string{"HS256"}))
 
 		if err != nil || !token.Valid {
 			c.JSON(401, gin.H{"error": "token ไม่ถูกต้อง"})

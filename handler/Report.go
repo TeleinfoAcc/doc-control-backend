@@ -3,10 +3,11 @@ package handlers
 import (
 	"checklist-backend/database"
 	"checklist-backend/models"
-	"os"
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // แถวของรายงาน = ข้อมูลคอส + ชื่อเจ้าของคอส
@@ -17,12 +18,11 @@ type CourseReportRow struct {
 }
 
 type ReportAgent struct {
-	Agent_id   string `json:"agent_id"`
+	Agent_id   uint   `json:"agent_id"`
 	Agent_name string `json:"agent_name"`
 }
 
-// agent_id ใน transaction เป็น varchar ส่วนใน iam_agents เป็นตัวเลข จึง cast เป็น text ก่อน join
-const reportJoin = "LEFT JOIN qamon.iam_agents a ON a.agent_id::text = t.agent_id"
+const reportJoin = "LEFT JOIN qamon.iam_agents a ON a.agent_id = t.agent_id"
 const agentNameExpr = "TRIM(CONCAT_WS(' ', a.title_name_th, a.first_name_th, a.last_name_th))"
 
 // GET /api/reports/courses?year=2026&agent_id=123
@@ -40,13 +40,18 @@ func GetCourseReport(c *gin.Context) {
 		}
 		query = query.Where("EXTRACT(YEAR FROM t.start_date) = ?", year)
 	}
-	if agentID := c.Query("agent_id"); agentID != "" {
+	if a := c.Query("agent_id"); a != "" {
+		agentID, err := strconv.ParseUint(a, 10, 64)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "agent_id ไม่ถูกต้อง"})
+			return
+		}
 		query = query.Where("t.agent_id = ?", agentID)
 	}
 
 	var rows []CourseReportRow
 	if err := query.Order("agent_name ASC, t.start_date DESC NULLS LAST, t.id DESC").Scan(&rows).Error; err != nil {
-		c.JSON(500, gin.H{"error": "ไม่สามารถดึงข้อมูลรายงานได้", "details": err.Error()})
+		internalError(c, "ไม่สามารถดึงข้อมูลรายงานได้", err)
 		return
 	}
 
@@ -59,7 +64,7 @@ func GetReportFilters(c *gin.Context) {
 	if err := database.DB.Raw(`SELECT DISTINCT EXTRACT(YEAR FROM start_date)::int AS year
 		FROM doccontrol.transaction WHERE start_date IS NOT NULL ORDER BY year DESC`).
 		Scan(&years).Error; err != nil {
-		c.JSON(500, gin.H{"error": "ไม่สามารถดึงข้อมูลปีได้", "details": err.Error()})
+		internalError(c, "ไม่สามารถดึงข้อมูลปีได้", err)
 		return
 	}
 
@@ -69,7 +74,7 @@ func GetReportFilters(c *gin.Context) {
 		Joins(reportJoin).
 		Order("agent_name ASC").
 		Scan(&agents).Error; err != nil {
-		c.JSON(500, gin.H{"error": "ไม่สามารถดึงรายชื่อได้", "details": err.Error()})
+		internalError(c, "ไม่สามารถดึงรายชื่อได้", err)
 		return
 	}
 
@@ -78,19 +83,20 @@ func GetReportFilters(c *gin.Context) {
 
 // GET /api/reports/courses/:id/evidence → เปิดไฟล์หลักฐานของคอสใดก็ได้ (ใช้ในหน้ารายงาน)
 func GetReportEvidence(c *gin.Context) {
-	var course models.Doccontrol
-	if err := database.DB.Where("id = ?", c.Param("id")).First(&course).Error; err != nil {
-		c.JSON(404, gin.H{"error": "ไม่พบข้อมูลคอส"})
-		return
-	}
-	if course.Evidence_path == "" {
-		c.JSON(404, gin.H{"error": "คอสนี้ไม่มีไฟล์หลักฐาน"})
-		return
-	}
-	if _, err := os.Stat(course.Evidence_path); err != nil {
-		c.JSON(404, gin.H{"error": "ไม่พบไฟล์หลักฐาน"})
+	id, ok := paramID(c)
+	if !ok {
 		return
 	}
 
-	c.File(course.Evidence_path)
+	var course models.Doccontrol
+	err := database.DB.Where("id = ?", id).First(&course).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(404, gin.H{"error": "ไม่พบข้อมูลคอส"})
+		return
+	}
+	if err != nil {
+		internalError(c, "เกิดข้อผิดพลาด", err)
+		return
+	}
+	sendEvidence(c, &course)
 }

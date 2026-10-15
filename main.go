@@ -29,7 +29,6 @@ func main() {
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 	{
-
 		protected.GET("/courses", handlers.GetMyCourses)
 		protected.GET("/courses/:id", handlers.GetCourse)
 		protected.POST("/courses", handlers.CreateCourse)
@@ -39,8 +38,6 @@ func main() {
 		protected.GET("/reports/courses", handlers.GetCourseReport)
 		protected.GET("/reports/courses/:id/evidence", handlers.GetReportEvidence)
 		protected.GET("/reports/filters", handlers.GetReportFilters)
-
-		// protected.DELETE("/users/:id", handlers.DeleteUser)
 	}
 
 	r.Run(":8080")
