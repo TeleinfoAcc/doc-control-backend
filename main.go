@@ -30,9 +30,15 @@ func main() {
 	protected.Use(middleware.AuthMiddleware())
 	{
 
-		protected.POST("/addTools", handlers.AddTools)
-		protected.GET("/getTools", handlers.GetTools)
-		protected.PATCH("/updateTools", handlers.UpdateTools)
+		protected.GET("/courses", handlers.GetMyCourses)
+		protected.GET("/courses/:id", handlers.GetCourse)
+		protected.POST("/courses", handlers.CreateCourse)
+		protected.PUT("/courses/:id", handlers.UpdateCourse)
+		protected.GET("/courses/:id/evidence", handlers.GetCourseEvidence)
+
+		protected.GET("/reports/courses", handlers.GetCourseReport)
+		protected.GET("/reports/courses/:id/evidence", handlers.GetReportEvidence)
+		protected.GET("/reports/filters", handlers.GetReportFilters)
 
 		// protected.DELETE("/users/:id", handlers.DeleteUser)
 	}
