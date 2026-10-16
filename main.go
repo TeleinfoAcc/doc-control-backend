@@ -38,6 +38,7 @@ func main() {
 		protected.GET("/reports/courses", handlers.GetCourseReport)
 		protected.GET("/reports/courses/:id/evidence", handlers.GetReportEvidence)
 		protected.GET("/reports/filters", handlers.GetReportFilters)
+		protected.GET("/reports/agents/:id/training-record", handlers.ExportTrainingRecord)
 	}
 
 	r.Run(":8080")

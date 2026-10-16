@@ -39,7 +39,7 @@ var unsafeFileChars = regexp.MustCompile(`[^\p{L}\p{M}\p{N}._-]+`)
 
 var bangkok, _ = time.LoadLocation("Asia/Bangkok")
 
-// ข้อมูลจาก multipart form ของหน้าเพิ่ม/แก้ไขคอส
+// ข้อมูลจาก multipart form ของหน้าเพิ่ม/แก้ไขคอร์ส
 type courseForm struct {
 	Objective       string `form:"objective"`
 	Course_id       string `form:"course_id" binding:"required"`
@@ -49,6 +49,7 @@ type courseForm struct {
 	Url             string `form:"url"`
 	Course_time     string `form:"course_time"`
 	Status          string `form:"status" binding:"required,oneof='Not Started' 'In Progress' Completed"`
+	Point           string `form:"point"`
 	Start_date      string `form:"start_date"`
 	Complete_date   string `form:"complete_date"`
 	Remove_evidence bool   `form:"remove_evidence"`
@@ -83,7 +84,7 @@ func paramID(c *gin.Context) (uint, bool) {
 	return uint(id), true
 }
 
-// หาคอสตาม id ที่เป็นของ agent ที่ login อยู่เท่านั้น
+// หาคอร์สตาม id ที่เป็นของ agent ที่ login อยู่เท่านั้น
 func findOwnCourse(c *gin.Context, agentID uint) (*models.Doccontrol, bool) {
 	id, ok := paramID(c)
 	if !ok {
@@ -93,7 +94,7 @@ func findOwnCourse(c *gin.Context, agentID uint) (*models.Doccontrol, bool) {
 	var course models.Doccontrol
 	err := database.DB.Where("id = ? AND agent_id = ?", id, agentID).First(&course).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(404, gin.H{"error": "ไม่พบข้อมูลคอส"})
+		c.JSON(404, gin.H{"error": "ไม่พบข้อมูลคอร์ส"})
 		return nil, false
 	}
 	if err != nil {
@@ -122,6 +123,7 @@ func bindCourseForm(c *gin.Context, course *models.Doccontrol) (*courseForm, err
 	course.Url = strings.TrimSpace(form.Url)
 	course.Course_time = strings.TrimSpace(form.Course_time)
 	course.Status = form.Status
+	course.Point = strings.TrimSpace(form.Point)
 
 	if course.Course_id == "" || course.Course_name == "" {
 		return nil, errors.New("กรุณาระบุ ID และ Course Name")
@@ -224,7 +226,7 @@ func GetMyCourses(c *gin.Context) {
 
 	var courses []models.Doccontrol
 	if err := database.DB.Where("agent_id = ?", agentID).Order("id desc").Find(&courses).Error; err != nil {
-		internalError(c, "ไม่สามารถดึงข้อมูลคอสได้", err)
+		internalError(c, "ไม่สามารถดึงข้อมูลคอร์สได้", err)
 		return
 	}
 
@@ -281,11 +283,11 @@ func CreateCourse(c *gin.Context) {
 
 	if err := database.DB.Create(&course).Error; err != nil {
 		removeEvidence(course.Evidence_path)
-		internalError(c, "ไม่สามารถเพิ่มคอสได้", err)
+		internalError(c, "ไม่สามารถเพิ่มคอร์สได้", err)
 		return
 	}
 
-	c.JSON(201, gin.H{"message": "เพิ่มคอสเรียนสำเร็จ", "course": course})
+	c.JSON(201, gin.H{"message": "เพิ่มคอร์สเรียนสำเร็จ", "course": course})
 }
 
 func UpdateCourse(c *gin.Context) {
@@ -334,7 +336,7 @@ func UpdateCourse(c *gin.Context) {
 		if course.Evidence_path != oldEvidence {
 			removeEvidence(course.Evidence_path)
 		}
-		internalError(c, "ไม่สามารถอัปเดตคอสได้", err)
+		internalError(c, "ไม่สามารถอัปเดตคอร์สได้", err)
 		return
 	}
 
@@ -343,10 +345,10 @@ func UpdateCourse(c *gin.Context) {
 		removeEvidence(oldEvidence)
 	}
 
-	c.JSON(200, gin.H{"message": "อัปเดตคอสเรียนสำเร็จ", "course": course})
+	c.JSON(200, gin.H{"message": "อัปเดตคอร์สเรียนสำเร็จ", "course": course})
 }
 
-// ส่งไฟล์หลักฐานให้เฉพาะเจ้าของคอส
+// ส่งไฟล์หลักฐานให้เฉพาะเจ้าของคอร์ส
 func GetCourseEvidence(c *gin.Context) {
 	agentID, ok := currentAgentID(c)
 	if !ok {
@@ -361,10 +363,10 @@ func GetCourseEvidence(c *gin.Context) {
 	sendEvidence(c, course)
 }
 
-// ส่งไฟล์หลักฐานของคอสกลับไป (ใช้ทั้งหน้าคอสของฉันและหน้ารายงาน)
+// ส่งไฟล์หลักฐานของคอร์สกลับไป (ใช้ทั้งหน้าคอร์สของฉันและหน้ารายงาน)
 func sendEvidence(c *gin.Context, course *models.Doccontrol) {
 	if course.Evidence_path == "" {
-		c.JSON(404, gin.H{"error": "คอสนี้ไม่มีไฟล์หลักฐาน"})
+		c.JSON(404, gin.H{"error": "คอร์สนี้ไม่มีไฟล์หลักฐาน"})
 		return
 	}
 	if _, err := os.Stat(course.Evidence_path); err != nil {

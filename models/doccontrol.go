@@ -14,6 +14,7 @@ type Doccontrol struct {
 	Agent_id      uint       `json:"agent_id" gorm:"column:agent_id"`
 	Course_time   string     `json:"course_time" gorm:"column:course_time"`
 	Status        string     `json:"status" gorm:"column:status"`
+	Point         string     `json:"point" gorm:"column:point"`
 	Start_date    *time.Time `json:"start_date" gorm:"column:start_date"`
 	Complete_date *time.Time `json:"complete_date" gorm:"column:complete_date"`
 	Evidence_path string     `json:"evidence_path" gorm:"column:evidence_path"`

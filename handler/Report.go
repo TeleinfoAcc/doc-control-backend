@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// แถวของรายงาน = ข้อมูลคอส + ชื่อเจ้าของคอส
+// แถวของรายงาน = ข้อมูลคอร์ส + ชื่อเจ้าของคอร์ส
 type CourseReportRow struct {
 	models.Doccontrol
 	Agent_name string `json:"agent_name"`
@@ -58,7 +58,7 @@ func GetCourseReport(c *gin.Context) {
 	c.JSON(200, gin.H{"courses": rows})
 }
 
-// GET /api/reports/filters → ปีที่มีข้อมูล (จาก start_date) และรายชื่อคนที่มีคอส
+// GET /api/reports/filters → ปีที่มีข้อมูล (จาก start_date) และรายชื่อคนที่มีคอร์ส
 func GetReportFilters(c *gin.Context) {
 	var years []int
 	if err := database.DB.Raw(`SELECT DISTINCT EXTRACT(YEAR FROM start_date)::int AS year
@@ -81,7 +81,7 @@ func GetReportFilters(c *gin.Context) {
 	c.JSON(200, gin.H{"years": years, "agents": agents})
 }
 
-// GET /api/reports/courses/:id/evidence → เปิดไฟล์หลักฐานของคอสใดก็ได้ (ใช้ในหน้ารายงาน)
+// GET /api/reports/courses/:id/evidence → เปิดไฟล์หลักฐานของคอร์สใดก็ได้ (ใช้ในหน้ารายงาน)
 func GetReportEvidence(c *gin.Context) {
 	id, ok := paramID(c)
 	if !ok {
@@ -91,7 +91,7 @@ func GetReportEvidence(c *gin.Context) {
 	var course models.Doccontrol
 	err := database.DB.Where("id = ?", id).First(&course).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(404, gin.H{"error": "ไม่พบข้อมูลคอส"})
+		c.JSON(404, gin.H{"error": "ไม่พบข้อมูลคอร์ส"})
 		return
 	}
 	if err != nil {

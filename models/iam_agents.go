@@ -12,6 +12,7 @@ type IamAgents struct {
 	Agent_note    string `json:"agent_note"`
 	Role_id       uint   `json:"role_id"`
 	Permission_id uint   `json:"permission_id"`
+	Position_id   uint   `json:"position_id"`
 	Login         string `json:"login"`
 	Password      string `json:"-"`
 	Tmc_email     string `json:"tmc_email"`
